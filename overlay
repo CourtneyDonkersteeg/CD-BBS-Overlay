@@ -1,0 +1,42 @@
+#requires Rtools
+#requires JAGS
+
+
+#install.packages("bbsBayes") 
+library(bbsBayes)
+library(tidyverse)
+library(raster)
+#install.packages("sf")
+library(sf)
+#install.packages("rgeos")
+library(rgeos)
+library(landscapemetrics)
+library(landscapetools)
+library(dplyr)
+library(rgdal)
+library(ggplot2)
+
+#unzip("maps/All Routes 2019.kmz")
+BBSroutes <- st_read("maps/doc.kml")
+BBSroutes$Description  <- NULL
+
+plot(BBSroutes)
+
+st_crs(BBSroutes)
+BBSlaea <- st_transform(BBSroutes,
+                        crs = "+proj=laea +x_0=0 +y_0=0 +lon_0=-90 +lat_0=50")
+st_crs(BBSlaea)
+BBSlaea <- st_buffer(BBSlaea, 5000)
+plot(BBSlaea)
+
+CD <- st_read(dsn = "maps", layer = "2016CD_ag")
+
+
+CD_laea = st_transform(CD,
+                            crs = "+proj=laea +x_0=0 +y_0=0 +lon_0=-90 +lat_0=50")
+
+
+### trying an intersection instead of a union - this should be more efficient because it removes/ignores the non-overlapping areas
+
+overlay <- st_intersection(BBSlaea,CD_laea)
+write.csv(overlay, file = "CD overlay.csv")
