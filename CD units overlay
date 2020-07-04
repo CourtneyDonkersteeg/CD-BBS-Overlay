@@ -19,6 +19,39 @@ library(ggplot2)
 #unzip("maps/All Routes 2019.kmz")
 BBSroutes <- st_read("maps/doc.kml")
 BBSroutes$Description  <- NULL
+BBSvalues <- BBSroutes
+BBSvalues$geometry <- NULL
+BBSvalues <- unlist(BBSvalues)
+BBSvalues <- str_replace_all(BBSvalues, "[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]", "")
+BBSvalues <- str_replace_all(BBSvalues, "[-'._È]", "")
+BBSvalues <- str_replace_all(BBSvalues, "[ ]", "")
+BBSvalues <- as.integer(BBSvalues)
+BBSvalues <- data.frame(BBSvalues)
+
+BBSvalues2 <- BBSvalues
+BBSvalues <- unlist(BBSvalues)
+BBSvalues <- substr(BBSvalues, start = 1, stop = 2)
+BBSvalues <- as.integer(BBSvalues)
+BBSvalues <- as.character(BBSvalues)
+BBSvalues <- paste(BBSvalues, "-")
+BBSvalues <- str_replace_all(BBSvalues, "[ ]", "")
+BBSvalues <- data.frame(BBSvalues)
+
+BBSvalues2 <- unlist(BBSvalues2)
+BBSvalues2 <- substr(BBSvalues2, start = 4, stop = 6)
+BBSvalues2 <- as.integer(BBSvalues2)
+BBSvalues2 <- as.character(BBSvalues2)
+BBSvalues2 <- data.frame(BBSvalues2)
+
+BBSroutes['BBSvalues'] <- BBSvalues
+BBSroutes['BBSvalues2'] <- BBSvalues2
+BBSroutes$Route <- paste(BBSroutes$BBSvalues, BBSroutes$BBSvalues2, sep = "")
+BBSroutes$BBSvalues <- NULL
+BBSroutes$BBSvalues2 <- NULL
+BBSroutes$Name <- NULL
+
+#remove(BBSvalues)
+#remove(BBSvalues2)
 
 plot(BBSroutes)
 
@@ -39,4 +72,37 @@ CD_laea = st_transform(CD,
 ### trying an intersection instead of a union - this should be more efficient because it removes/ignores the non-overlapping areas
 
 overlay <- st_intersection(BBSlaea,CD_laea)
+overlay$geometry <- NULL
+overlay$Remove <- NULL
+overlay$PRNAME <- NULL
+overlay$PRUID <- NULL
+overlay$CDTYPE <- NULL
+overlay$CDNAME <- NULL
+
+#write and read in the overlay to get rid of factor class data
 write.csv(overlay, file = "CD overlay.csv")
+overlay <- read.csv(file = "CD overlay.csv")
+overlay$X <- NULL
+
+CDvalues <- read.csv(file = "bbs_ins_CD.csv")
+#get rid of all columns except for CDUID, C_YEAR, CRPLND, INSECTI, and TFAREA
+#landscape simplification = CRPLND / TFAREA
+CDvalues$X <- NULL
+CDvalues$NTFAREA <- NULL
+CDvalues$NCRPLND <- NULL
+CDvalues$NINSECTI <- NULL
+CDvalues$REGION <- NULL
+
+#matchup overlay CDUIDs with data from bbs_ins_CD and filter for different years
+CDfilter <- merge(overlay, CDvalues, by = "CDUID")
+CD1996 <- filter(CDfilter, C_YEAR == "1996")
+CD2001 <- filter(CDfilter, C_YEAR == "2001")
+CD2006 <- filter(CDfilter, C_YEAR == "2006")
+CD2011 <- filter(CDfilter, C_YEAR == "2011")
+CD2016 <- filter(CDfilter, C_YEAR == "2016")
+CD1996$C_YEAR <- NULL
+CD2001$C_YEAR <- NULL
+CD2006$C_YEAR <- NULL
+CD2011$C_YEAR <- NULL
+CD2016$C_YEAR <- NULL
+
