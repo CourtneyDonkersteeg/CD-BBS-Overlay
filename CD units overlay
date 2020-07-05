@@ -76,12 +76,7 @@ CD2011$C_YEAR <- NULL
 CD2016$C_YEAR <- NULL
 
 #calculate weighted mean for multiple CD values on one route for each year.
-###Example with 1996
-overlay_zeroes1996 <- anti_join(overlay, CD1996, by = "rt.uni")
-overlay_zeroes1996$TFAREA <- "0"
-overlay_zeroes1996$CRPLND <- "0"
-overlay_zeroes1996$INSECTI <- "0"
-CD1996 <- merge(CD1996, overlay_zeroes1996, all = TRUE)
+
 
 
 Wm <- function(x,w){
