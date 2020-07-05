@@ -19,39 +19,10 @@ library(ggplot2)
 #unzip("maps/All Routes 2019.kmz")
 BBSroutes <- st_read("maps/doc.kml")
 BBSroutes$Description  <- NULL
-BBSvalues <- BBSroutes
-BBSvalues$geometry <- NULL
-BBSvalues <- unlist(BBSvalues)
-BBSvalues <- str_replace_all(BBSvalues, "[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]", "")
-BBSvalues <- str_replace_all(BBSvalues, "[-'._È]", "")
-BBSvalues <- str_replace_all(BBSvalues, "[ ]", "")
-BBSvalues <- as.integer(BBSvalues)
-BBSvalues <- data.frame(BBSvalues)
-
-BBSvalues2 <- BBSvalues
-BBSvalues <- unlist(BBSvalues)
-BBSvalues <- substr(BBSvalues, start = 1, stop = 2)
-BBSvalues <- as.integer(BBSvalues)
-BBSvalues <- as.character(BBSvalues)
-BBSvalues <- paste(BBSvalues, "-")
-BBSvalues <- str_replace_all(BBSvalues, "[ ]", "")
-BBSvalues <- data.frame(BBSvalues)
-
-BBSvalues2 <- unlist(BBSvalues2)
-BBSvalues2 <- substr(BBSvalues2, start = 4, stop = 6)
-BBSvalues2 <- as.integer(BBSvalues2)
-BBSvalues2 <- as.character(BBSvalues2)
-BBSvalues2 <- data.frame(BBSvalues2)
-
-BBSroutes['BBSvalues'] <- BBSvalues
-BBSroutes['BBSvalues2'] <- BBSvalues2
-BBSroutes$Route <- paste(BBSroutes$BBSvalues, BBSroutes$BBSvalues2, sep = "")
-BBSroutes$BBSvalues <- NULL
-BBSroutes$BBSvalues2 <- NULL
-BBSroutes$Name <- NULL
-
-#remove(BBSvalues)
-#remove(BBSvalues2)
+BBSroutes$prov <- as.integer(stringr::str_sub(BBSroutes$Name,1,2))
+BBSroutes$rt <- as.integer(stringr::str_sub(BBSroutes$Name,4,6))
+BBSroutes$Route_Name <- as.character(stringr::str_sub(BBSroutes$Name,8))
+BBSroutes$rt.uni <- paste(BBSroutes$prov,BBSroutes$rt,sep = "-") 
 
 plot(BBSroutes)
 
@@ -68,8 +39,6 @@ CD <- st_read(dsn = "maps", layer = "2016CD_ag")
 CD_laea = st_transform(CD,
                             crs = "+proj=laea +x_0=0 +y_0=0 +lon_0=-90 +lat_0=50")
 
-
-### trying an intersection instead of a union - this should be more efficient because it removes/ignores the non-overlapping areas
 
 overlay <- st_intersection(BBSlaea,CD_laea)
 overlay$geometry <- NULL
@@ -105,4 +74,25 @@ CD2001$C_YEAR <- NULL
 CD2006$C_YEAR <- NULL
 CD2011$C_YEAR <- NULL
 CD2016$C_YEAR <- NULL
+
+#calculate weighted mean for multiple CD values on one route for each year.
+###Example with 1996
+overlay_zeroes1996 <- anti_join(overlay, CD1996, by = "rt.uni")
+overlay_zeroes1996$TFAREA <- "0"
+overlay_zeroes1996$CRPLND <- "0"
+overlay_zeroes1996$INSECTI <- "0"
+CD1996 <- merge(CD1996, overlay_zeroes1996, all = TRUE)
+
+
+Wm <- function(x,w){
+  wmn = sum(x*w)/sum(w)
+}
+
+means_by_route1996 <- CD1996 %>%
+  group_by(rt.uni) %>%
+  summarise(mean_insecticide = Wm(x = INSECTI, w = TFAREA),
+            mean_other_census = Wm(x = CRPLND, w = TFAREA))
+
+###Error in x * w : non-numeric argument to binary operator
+
 
