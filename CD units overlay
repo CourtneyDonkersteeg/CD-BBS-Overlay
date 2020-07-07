@@ -74,7 +74,6 @@ overlay$geometry <- NULL
 
 overlay <- merge(BBSlaea, overlay, by = "rt.uni")
 
-
 #write and read in the overlay to get rid of factor class data
 write.csv(overlay, file = "CD overlay.csv")
 overlay <- read.csv(file = "CD overlay.csv")
@@ -102,25 +101,32 @@ CD2006$C_YEAR <- NULL
 CD2011$C_YEAR <- NULL
 CD2016$C_YEAR <- NULL
 
-#calculate weighted mean for multiple CD values on one route for each year.
+#find zeroes for areas of BBS routes not intersected by CD overlay.
 zeroes1996 <- (CD1996$bbs_area) - (CD1996$cd_area)
 zeroes1996$rt.uni <- CD1996$rt.uni
 zeroes1996$TFAREA <- "0"
 zeroes1996$CRPLND <- "0"
 zeroes1996$INSECTI <- "0"
-zeroes1996$st_area.BBS_geo. <- as.numeric(zeroes1996$st_area.BBS_geo.)
+zeroes1996$`st_area(BBS_geo)` <- as.integer(zeroes1996$`st_area(BBS_geo)`)
+colnames(zeroes1996)[1] <- "area_m2"
+zeroes1996 <- filter(zeroes1996, area_m2 > 0)
 
-zeroes1996 <- filter(zeroes1996, BBS_geo > 0)
-###ERROR messagein Ops.units(left, right) : both operands of the expression should be "units" objects
+CD1996$bbs_area <- NULL
+CD1996$CDUID <- NULL
+CD1996$cd_area <- as.integer(unlist(CD1996$cd_area))
+colnames(CD1996)[2] <- "area_m2"
+CD1996 <- rbind(CD1996, zeroes1996)
 
+#calculate weighted mean for multiple CD values on one route for each year.
 Wm <- function(x,w){
   wmn = sum(x*w)/sum(w)
 }
 
 means_by_route1996 <- CD1996 %>%
   group_by(rt.uni) %>%
-  summarise(mean_insecticide = Wm(x = INSECTI, w = TFAREA),
-            mean_other_census = Wm(x = CRPLND, w = TFAREA))
+  summarise(mean_insecticide = Wm(x = INSECTI, w = area_m2),
+            mean_cropland = Wm(x = CRPLND, w = area_m2),
+            mean_total_farm = Wm(x = TFAREA, w = area_m2))
 
-
+###ERROR message says there are non-numeric variables in this equation...but there aren't?
 
