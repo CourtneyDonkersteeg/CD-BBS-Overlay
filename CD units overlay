@@ -15,6 +15,8 @@ library(landscapetools)
 library(dplyr)
 library(rgdal)
 library(ggplot2)
+#install.packages("lwgeom")
+library(lwgeom)
 
 #unzip("maps/All Routes 2019.kmz")
 BBSroutes <- st_read("maps/doc.kml")
@@ -41,12 +43,37 @@ CD_laea = st_transform(CD,
 
 
 overlay <- st_intersection(BBSlaea,CD_laea)
-overlay$geometry <- NULL
 overlay$Remove <- NULL
 overlay$PRNAME <- NULL
 overlay$PRUID <- NULL
 overlay$CDTYPE <- NULL
 overlay$CDNAME <- NULL
+overlay$Name <- NULL
+overlay$prov <- NULL
+overlay$rt <- NULL
+overlay$Route_Name <- NULL
+
+#transform each geometry value into an area value
+#this represents the area of the routes overlapping the CD
+#subtract it from the area values from the BBS geometry points
+#this is now the zero values
+#put these zero values into the data frames below
+overlay_geo <- overlay$geometry
+overlay_geo <- as.data.frame(st_area(overlay_geo))
+overlay$cd_area <- overlay_geo
+
+BBS_geo <- BBSlaea$geometry
+BBS_geo <- as.data.frame(st_area(BBS_geo))
+BBSlaea$bbs_area <- BBS_geo
+BBSlaea$Name <- NULL
+BBSlaea$prov <- NULL
+BBSlaea$rt <- NULL
+BBSlaea$Route_Name <- NULL
+BBSlaea$geometry <- NULL
+overlay$geometry <- NULL
+
+overlay <- merge(BBSlaea, overlay, by = "rt.uni")
+
 
 #write and read in the overlay to get rid of factor class data
 write.csv(overlay, file = "CD overlay.csv")
@@ -76,8 +103,15 @@ CD2011$C_YEAR <- NULL
 CD2016$C_YEAR <- NULL
 
 #calculate weighted mean for multiple CD values on one route for each year.
+zeroes1996 <- (CD1996$bbs_area) - (CD1996$cd_area)
+zeroes1996$rt.uni <- CD1996$rt.uni
+zeroes1996$TFAREA <- "0"
+zeroes1996$CRPLND <- "0"
+zeroes1996$INSECTI <- "0"
+zeroes1996$st_area.BBS_geo. <- as.numeric(zeroes1996$st_area.BBS_geo.)
 
-
+zeroes1996 <- filter(zeroes1996, BBS_geo > 0)
+###ERROR messagein Ops.units(left, right) : both operands of the expression should be "units" objects
 
 Wm <- function(x,w){
   wmn = sum(x*w)/sum(w)
@@ -88,6 +122,5 @@ means_by_route1996 <- CD1996 %>%
   summarise(mean_insecticide = Wm(x = INSECTI, w = TFAREA),
             mean_other_census = Wm(x = CRPLND, w = TFAREA))
 
-###Error in x * w : non-numeric argument to binary operator
 
 
